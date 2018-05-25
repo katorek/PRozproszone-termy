@@ -1,7 +1,7 @@
 # PRozproszone-termy
 ## Compiling
 * Compile with script `cc` or
-* Manual `mpicc termy.c -o termy`  
+* Manual `mpicc termy.c -o termy -lpthread`  
 ## Running
 * `mpirun -n X termy` where X is number of processes  
 
