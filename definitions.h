@@ -15,24 +15,16 @@
 #define MSG_HASH 1
 #define MSG_ROOM 0
 
-#define MAX_IN_ROOM 2
-
+#define NORM   "\x1B[0m"
 #define KNRM   "\x1B[0m"
-#define KRED   "\x1B[31m"
-#define KREDB  "\x1B[91m"
 #define RED  "\x1B[91m"
-#define KGRN   "\x1B[32m"
-#define KGRNB  "\x1B[92m"
 #define GR  "\x1B[92m"
-#define KYEL   "\x1B[33m"
-#define KYELB  "\x1B[93m"
 #define Y  "\x1B[93m"
-#define KBLU   "\x1B[34m"
-#define KBLUB  "\x1B[94m"
 #define BL  "\x1B[94m"
-#define KMAG   "\x1B[35m"
-#define KMAGB  "\x1B[95m"
-#define KCYN   "\x1B[36m"
-#define KCYNB  "\x1B[96m"
+#define M  "\x1B[95m"
 #define C  "\x1B[96m"
-#define KWHT   "\x1B[37m"
+
+#define MAX_IN_ROOM 5
+#define MIN_WAIT_TIME 10
+#define MAX_WAIT_TIME 20
+#define RETRY_TIME 4
