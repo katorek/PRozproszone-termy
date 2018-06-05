@@ -38,12 +38,14 @@ void setUpRand(int pid){
 
 /** Set occupancy of all changing rooms to 0. Also resets required variables to default values */
 void reset(){ 
-	currentHash = 0;
+	pthread_mutex_lock(&lock);
+	//currentHash = 0;
 	requestingChangingRoom = requestsWHPDiffrentG = requestsWHPSameG = 0;
 	changingRoom = 0;
 	received = 1; //od siebie juz dostalismy wiadomosc
 	m[0] = m[1] = m[2] = 0;//1-2-3
 	w[0] = w[1] = w[2] = 0;//4-5-6
+	pthread_mutex_unlock(&lock);
 }
 
 /** Return gender of client. Returns 0 - for men, 1 - for women */
@@ -85,11 +87,43 @@ void *loop(void *ptr){
 			replyMessage[MSG_HASH] = receiveMessage[MSG_HASH];
 			replyMessage[MSG_ROOM] = changingRoom;
 			MPI_Send(replyMessage, MSG_SIZE, MPI_INT,status.MPI_SOURCE, MSG_TAG_REPLY, MPI_COMM_WORLD);
-		} else if(receiveMessage[MSG_HASH] == currentHash){
+		} else if(status.MPI_TAG == MSG_TAG_REPLY && receiveMessage[MSG_HASH] == currentHash){
 			pthread_mutex_lock(&lock);
-			received = received+1;
+			received++;
 			if(receiveMessage[MSG_ROOM]>3) w[receiveMessage[MSG_ROOM]-4]++;
 			else if(receiveMessage[MSG_ROOM]>0) m[receiveMessage[MSG_ROOM]-1]++;
+			pthread_mutex_unlock(&lock);
+			
+		} else if(status.MPI_TAG == MSG_TAG_ENTERS && doIrequestChangingRoom == 1){
+			pthread_mutex_lock(&lock);
+			
+			if(receiveMessage[MSG_ROOM]>3) w[receiveMessage[MSG_ROOM]-4]++;// = (w[receiveMessage[MSG_ROOM]-4]>0)?w[receiveMessage[MSG_ROOM]-4]+1:0;
+			else if(receiveMessage[MSG_ROOM]>0) m[receiveMessage[MSG_ROOM]-1]++;// = (m[receiveMessage[MSG_ROOM]-1]>0)?m[receiveMessage[MSG_ROOM]-1]+1:0;
+			
+			//if(doIrequestChangingRoom == 1){
+				if(receiveMessage[MSG_HASH] < currentHash || (receiveMessage[MSG_HASH] == currentHash && status.MPI_SOURCE < processID)) {
+					//if(receiveMessage[MSG_GENDER] != gender) requestsWHPDiffrentG=(requestsWHPDiffrentG>0)?requestsWHPDiffrentG-1:0;
+					//else requestsWHPSameG=(requestsWHPSameG>0)?requestsWHPSameG-1:0;
+					
+					if(receiveMessage[MSG_GENDER] != gender) requestsWHPDiffrentG--;//=(requestsWHPDiffrentG>0)?requestsWHPDiffrentG-1:0;
+					else requestsWHPSameG--;//=(requestsWHPSameG>0)?requestsWHPSameG-1:0;
+				}
+			//}
+			
+			pthread_mutex_unlock(&lock);
+			
+		} else if(status.MPI_TAG == MSG_TAG_LEAVES && doIrequestChangingRoom == 1){
+			pthread_mutex_lock(&lock);
+			if(receiveMessage[MSG_ROOM]>3) w[receiveMessage[MSG_ROOM]-4]--;// = (w[receiveMessage[MSG_ROOM]-4]>0)?w[receiveMessage[MSG_ROOM]-4]-1:0;
+			else if(receiveMessage[MSG_ROOM]>0) m[receiveMessage[MSG_ROOM]-1]--;// = (m[receiveMessage[MSG_ROOM]-1]>0)?m[receiveMessage[MSG_ROOM]-1]-1:0;
+			/*
+			if(doIrequestChangingRoom == 1){
+			
+				if(receiveMessage[MSG_HASH] < currentHash || (receiveMessage[MSG_HASH] == currentHash && status.MPI_SOURCE < processID)) {
+					if(receiveMessage[MSG_GENDER] != gender) requestsWHPDiffrentG=(requestsWHPDiffrentG>0)?requestsWHPDiffrentG-1:0;
+					else requestsWHPSameG=(requestsWHPSameG>0)?requestsWHPSameG-1:0;
+				}
+			}*/
 			pthread_mutex_unlock(&lock);
 		}
 	}
@@ -129,33 +163,37 @@ int waitAndJoinChangingRoom(){
 			else if	(canJoinRoom(w[2], m[2]) == 1) changingRoom = 6;
 			pthread_mutex_unlock(&lock);
 		}
-		if(received == size) break;
+		//if(received == size) break;
 	}
-	if(changingRoom==0 && received == size){
-		return doIrequestChangingRoom;
-	}
-	else{
-		printf("ENTERS\t"Y"%d <-"GR"%*d%s"Y" | M["C"%03d"Y"]  W["C"%03d"Y"]\tR[HPriorSameGen,HPOtherGen,ReceivedReply]: "C"%d"Y"["C"%d"Y","C"%d"Y","C"%d"Y"]\t"Y"%d\n",
-			(changingRoom-1)%3+1,
-			howManySpaces,
-			processID,
-			getGenderStr(gender),
-			printTables()/1000,
-			printTables()%1000,
-			requestingChangingRoom,
-			requestsWHPSameG,
-			requestsWHPDiffrentG,
-			received,
-			currentHash
-		);
-		return doIrequestChangingRoom = 0;
-	}
+	//if(changingRoom==0 && received == size){
+	//	return doIrequestChangingRoom;
+	//}
+	//else{
+	printf("ENTERS\t"Y"%d <-"GR"%*d%s"Y" | M["C"%03d"Y"]  W["C"%03d"Y"]\tR[HPriorSameGen,HPOtherGen,ReceivedReply]: "C"%d"Y"["C"%d"Y","C"%d"Y","C"%d"Y"]\t"Y"%d\n",
+		(changingRoom-1)%3+1,
+		howManySpaces,
+		processID,
+		getGenderStr(gender),
+		printTables()/1000,
+		printTables()%1000,
+		requestingChangingRoom,
+		requestsWHPSameG,
+		requestsWHPDiffrentG,
+		received,
+		currentHash
+	);
+	return doIrequestChangingRoom = 0;
+	//}
 }
-
+/*
+	printf(Y"WANT JOIN: "C"%d\n"KNRM, processID);
+*/
 /** Generating random hash/priority which depends on how many times current process was in changing room */
 int generateHash(int timesHB){
 	return (++timesHB*multiplier + (processID+1))*multiplier + rand()%(multiplier/2);
 }
+
+int showWantToJoin = 0;
 
 void *sender(void *ptr){
 	printf(Y"New process "GR"%d"Y" %s"KNRM"\n",
@@ -169,11 +207,15 @@ void *sender(void *ptr){
 	nanosleep(&tim, NULL);
 	int timesHaveBeen = 0;
 	while(1){
+		if(showWantToJoin==1)printf(M"REQUEST "C"%d\n"KNRM, processID);
 		doIrequestChangingRoom = 1;
 		reset();
 		sendingMessage[MSG_GENDER] = gender;
 		sendingMessage[MSG_ROOM] = 0;
 		sendingMessage[MSG_HASH] = currentHash = generateHash(timesHaveBeen);
+		
+		
+		
 		
 		for(i=0;i<size;++i){
 			if (i != processID){
@@ -182,9 +224,34 @@ void *sender(void *ptr){
 		}
 		
 		if(waitAndJoinChangingRoom()==0){
+			sendingMessage[MSG_GENDER] = gender;
+			sendingMessage[MSG_ROOM] = changingRoom;
+			sendingMessage[MSG_HASH] = currentHash;
+			
+			
+			//wyslac do wszystkich ze wszedlem do szatni changingRoom
+			for(i=0;i<size;++i){
+				if (i != processID){
+					MPI_Send(sendingMessage, MSG_SIZE, MPI_INT, i, MSG_TAG_ENTERS, MPI_COMM_WORLD);
+				}
+			}
+			
+			
+			
 			timesHaveBeen++;
 			tim.tv_sec = rand()%(MAX_WAIT_TIME-MIN_WAIT_TIME)+MIN_WAIT_TIME;
 			nanosleep(&tim, NULL);
+			//wychodizmy z term i informujemy innych o tym
+			sendingMessage[MSG_ROOM] = changingRoom;
+			sendingMessage[MSG_HASH] = currentHash;
+			sendingMessage[MSG_GENDER] = gender;
+			
+			for(i=0;i<size;++i){
+				if (i != processID){
+					MPI_Send(sendingMessage, MSG_SIZE, MPI_INT, i, MSG_TAG_LEAVES, MPI_COMM_WORLD);
+				}
+			}
+			
 			printf(RED"LEAVES\t"Y"%d,"C"%*d"Y"\n",
 				(changingRoom-1)%3+1,
 				howManySpaces,
@@ -194,6 +261,7 @@ void *sender(void *ptr){
 			tim.tv_sec = rand()%(MAX_WAIT_TIME-MIN_WAIT_TIME)+MIN_WAIT_TIME*2;
 			nanosleep(&tim, NULL);
 		}else{
+			//doIrequestChangingRoom = 2;
 			tim.tv_sec = rand()%RETRY_TIME;
 			nanosleep(&tim, NULL);
 		}
