@@ -10,6 +10,8 @@
 #define MSG_SIZE 3
 #define MSG_TAG_REQUEST 100
 #define MSG_TAG_REPLY 101
+#define MSG_TAG_LEAVES 102
+#define MSG_TAG_ENTERS 103
 
 #define MSG_GENDER 2
 #define MSG_HASH 1
@@ -25,6 +27,6 @@
 #define C  "\x1B[96m"
 
 #define MAX_IN_ROOM 5
-#define MIN_WAIT_TIME 10
-#define MAX_WAIT_TIME 20
+#define MIN_WAIT_TIME 7
+#define MAX_WAIT_TIME 15
 #define RETRY_TIME 4
